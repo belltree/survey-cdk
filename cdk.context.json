@@ -1,0 +1,13 @@
+{
+  "acknowledged-issue-numbers": [
+    34892
+  ],
+  "hosted-zone:account=444586102050:domainName=take-one.click:region=ap-northeast-1": {
+    "Id": "/hostedzone/Z05343911J58AWITOJ8DK",
+    "Name": "take-one.click."
+  },
+  "hosted-zone:account=444586102050:domainName=take-one.click:region=us-east-1": {
+    "Id": "/hostedzone/Z05343911J58AWITOJ8DK",
+    "Name": "take-one.click."
+  }
+}

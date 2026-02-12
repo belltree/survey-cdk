@@ -1,0 +1,114 @@
+function handler(event) {
+      const middleware = "cloudfront-functions-basic-auth";
+      var req = event.request;
+      var res = event.response;
+
+      console.log({
+        middleware,
+        step: "start",
+        path: req.uri,
+        headers: req.headers,
+        res: res,
+        config: {
+          appBasicAuthOnCloudFront: "yes",
+          appBasicAuth: "yes",
+          appBasicAuthPublicServices: "/$ /survey /api/v1/survey /api/_nuxt_icon",
+          appBasicAuthServices: "/operation:/api/v1/operation /analysis:/api/v1/analysis",
+          appBasicAuthRealms: "/operation /analysis",
+          appBasicAuthUsernames: "yaon2024 yaon2024",
+          appBasicAuthPasswords: "***masked***", // process.env.NUXT_APP_BASIC_AUTH_PASSWORDS,
+        },
+      });
+
+
+      // Pass through if Basic Authentication Disabled ---------------------------
+
+      // if ("yes" !== "yes") {
+      //   console.log({ middleware, step: "end:no-basic-auth" });
+      //   return;
+      // }
+
+      // Pass through if Public Access Path --------------------------------------
+
+      const publicPaths = "/$ /survey /api/v1/survey /api/_nuxt_icon".split(" ");
+      for (let i = 0; i < publicPaths.length; i++) {
+        const publicPath = publicPaths[i];
+        // Exact match
+        if (publicPath.endsWith("$")) {
+          if (req.uri === publicPath.slice(0, -1)) {
+            console.log({ middleware, step: "end:public-exact-match" });
+            return req;
+          }
+        }
+        // Starts with
+        else {
+          if ((req.uri ?? "").startsWith(publicPath)) {
+            console.log({ middleware, step: "end:public-startswith" });
+            return req;
+          }
+        }
+      }
+
+      // Determin Service Index --------------------------------------------------
+
+      const services = "/operation:/api/v1/operation /analysis:/api/v1/analysis".split(" "); // Services
+      let serviceIndex = -1;
+      for (let i = 0; i < services.length; i++) {
+        const path = services[i]
+          .split(":")
+          .find((basePath) => (req.uri ?? "").startsWith(basePath));
+        if (path) serviceIndex = i;
+      }
+      if (serviceIndex < 0) {
+        console.log({ middleware, step: "end:not-authorized-service" });
+        return {
+          statusCode: 404,
+          statusDescription: "Service not found",
+        };
+      }
+
+      // Return Challenge if No Basic Authentication Header ----------------------
+      const realms = "/operation /analysis".split(" "); // Realms
+      const authHeader = req.headers.authorization ? (req.headers.authorization.value ?? "") : "";
+      // return { statusCode: 200, body: "TEST AUTH-HEADER: " + JSON.stringify(authHeader) }; // BREAK POINT!!!!!!!!!!!!!
+      if (!authHeader.startsWith("Basic ")) {
+        console.log({ middleware, step: "end:respond-basic-auth-challenge" });
+        // return { statusCode: 200, body: "TEST NO-AUTH-HEADER-EXISTS: " + JSON.stringify({realms: realms}) }; // BREAK POINT!!!!!!!!!!!!!
+        return {
+          statusCode: 401,
+          statusDescription: "Authentication required",
+          headers: { "www-authenticate": { value: 'Basic realm="' + realms[serviceIndex] + '"' } },
+        };
+      }
+      // return { statusCode: 200, body: "TEST AUTH-HEADER-EXISTS: " + authHeader }; // BREAK POINT!!!!!!!!!!!!!
+
+      // Check credentials -------------------------------------------------------
+
+      const usernames = "yaon2024 yaon2024".split(" "); // Usernames
+      const passwords = "survey2024 survey2024".split(" "); // Passwords
+      // return { statusCode: 200, body: "TEST USERNAMES PASSWORDS: " + JSON.stringify(usernames) }; // BREAK POINT!!!!!!!!!!!!!
+
+      // Decode the base64-encoded credentials
+      const encodedCredentials = authHeader.split(" ")[1];
+      // return { statusCode: 200, body: "TEST ENCODED-CREDENTIALS: " + encodedCredentials }; // BREAK POINT!!!!!!!!!!!!!
+      const credentials = Buffer.from(encodedCredentials, "base64")
+        .toString("utf8")
+        .split(":");
+      // return { statusCode: 200, body: "TEST DECODE-CREDENTIALS: " + JSON.stringify({credentials: credentials, username: usernames[serviceIndex], password: passwords[serviceIndex]}) }; // BREAK POINT!!!!!!!!!!!!!
+      // Validate credentials
+      if (credentials[0] !== usernames[serviceIndex] || credentials[1] !== passwords[serviceIndex]) {
+        return { statusCode: 200, body: "TEST INVALID-CREDENTIALS: " + JSON.stringify({credentials: credentials, username: usernames[serviceIndex], password: passwords[serviceIndex]}) }; // BREAK POINT!!!!!!!!!!!!!
+        console.debug({ middleware, step: "end:invalid-credentials" });
+        return {
+          statusCode: 401,
+          statusDescription: "Invalid credentials",
+          headers: { "www-authenticate": { value: `Basic realm="${realms[serviceIndex]}"` } },
+        };
+      }
+
+      return { statusCode: 200, body: "TEST AUTHORIZED: " + JSON.stringify({credentials: credentials, username: usernames[serviceIndex], password: passwords[serviceIndex]}) }; // BREAK POINT!!!!!!!!!!!!!
+      // If authorized, continue the request
+      console.debug({ middleware, step: "end:authorized" });
+      return req;
+    }
+  
