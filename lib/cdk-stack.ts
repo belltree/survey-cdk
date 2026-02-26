@@ -3,9 +3,6 @@ import * as cdk from "aws-cdk-lib";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as cloudfrontOrigins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import * as elbTargets from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import * as glue from "aws-cdk-lib/aws-glue";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
@@ -14,7 +11,6 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { basicAuthCloudFrontFunctionBuilder } from "./cloudfront-functions/basic-authentication";
-import { KeyPair } from "cdk-ec2-key-pair";
 import type { Construct } from "constructs";
 
 export class CdkStack extends cdk.Stack {
@@ -54,6 +50,17 @@ export class CdkStack extends cdk.Stack {
 
     const staticBucket = new s3.Bucket(this, "s3-static", {
       bucketName: process.env.NUXT_AWS_S3_PUBLIC_BUCKET_NAME, // Replace with a unique name
+      versioned: false, // Disable versioning
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Auto-delete bucket when stack is destroyed
+      autoDeleteObjects: true, // Automatically delete objects in the bucket when destroyed
+      publicReadAccess: false, // Disable public access
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block public access to the bucket
+    });
+
+    // Application Storage Bucket----------------
+
+    const storageBucket = new s3.Bucket(this, "s3-storage", {
+      bucketName: process.env.NUXT_AWS_S3_STORAGE_BUCKET_NAME, // Replace with a unique name
       versioned: false, // Disable versioning
       removalPolicy: cdk.RemovalPolicy.DESTROY, // Auto-delete bucket when stack is destroyed
       autoDeleteObjects: true, // Automatically delete objects in the bucket when destroyed
@@ -302,7 +309,9 @@ export class CdkStack extends cdk.Stack {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "sortKey", type: dynamodb.AttributeType.STRING },
       tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`,
-      pointInTimeRecovery: config.app.env == "prd",
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: config.app.env == "prd",
+      },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy:
         config.app.env == "prd"
