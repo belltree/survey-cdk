@@ -12,6 +12,7 @@ import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { basicAuthCloudFrontFunctionBuilder } from "./cloudfront-functions/basic-authentication";
 import type { Construct } from "constructs";
+import { Tags } from "aws-cdk-lib";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -28,7 +29,6 @@ export class CdkStack extends cdk.Stack {
           domainName: process.env.NUXT_AWS_R53_APP_HOSTED_ZONE_DOMAIN || "",
         })
       : undefined;
-
 
     console.log({ isAppDomainHosting, hostedZone });
 
@@ -300,6 +300,7 @@ export class CdkStack extends cdk.Stack {
       comment: config.app.name,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // Minimum area including Japan
     });
+    Tags.of(distribution).add('Name', `${config.app.name}-cloudfront`);
 
     // DynamoDB --------------------------------------------------------------
 
@@ -307,16 +308,15 @@ export class CdkStack extends cdk.Stack {
 
     const entriesTable = new dynamodb.Table(this, `dynamodb-table:Entries`, {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "sortKey", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "step_id", type: dynamodb.AttributeType.STRING },
       tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`,
       pointInTimeRecoverySpecification: {
-        pointInTimeRecoveryEnabled: config.app.env == "prd",
+        pointInTimeRecoveryEnabled:
+          process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy:
-        config.app.env == "prd"
-          ? cdk.RemovalPolicy.RETAIN
-          : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
+        cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
     });
 
     // // Entries Table : GSIs --------------------
@@ -362,6 +362,25 @@ export class CdkStack extends cdk.Stack {
     //   projectionType: dynamodb.ProjectionType.INCLUDE,
     //   nonKeyAttributes: ["createdAt", "deletedAt"],
     // });
+
+    // Transaction Table ---------------------------
+
+    const transactionTable = new dynamodb.Table(
+      this,
+      `dynamodb-table:Transactions`,
+      {
+        partitionKey: { name: "type_id", type: dynamodb.AttributeType.STRING },
+        sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
+        tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Transactions`,
+        pointInTimeRecoverySpecification: {
+          pointInTimeRecoveryEnabled:
+            process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
+        },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
+          cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
+      },
+    );
 
     // DNS Records -----------------------------------------------------------
 

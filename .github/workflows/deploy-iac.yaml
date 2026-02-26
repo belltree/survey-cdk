@@ -1,0 +1,94 @@
+name: Deploy IaC to AWS
+
+on:
+  push:
+    branches:
+      - survey-sundai-dev
+    paths:
+      - ".github/workflows/deploy-iac.yaml"
+      - "cdk.json"
+      - "cdk.ts"
+      - "jest.config.js"
+      - "lib/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+
+  workflow_dispatch:
+    inputs:
+      system_name:
+        description: "Target system (environment)"
+        required: true
+        default: "ccs-one-dev"
+        type: choice
+        options:
+          - ccs-one-dev
+          - ccs-tcn-dev
+          - ccs-tcn-stg
+          - ccs-tcn-prd
+      action_name:
+        description: "AWS CDK action"
+        required: true
+        default: "diff"
+        type: choice
+        options:
+          - diff
+          - synth
+          - deploy
+          - list
+          - docs
+          - doctor
+
+env:
+  SYSTEM_NAME: |-
+    ${{ 
+      github.event.inputs.system_name || 
+      (github.ref_name == 'ccs-one-dev' && 'ccs-one-dev') || 
+      'ccs-one-dev'
+    }}
+  ACTION_NAME: |-
+    ${{ 
+      github.event.inputs.action_name || 'diff'
+    }}
+
+jobs:
+  deploy-iac:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: iac/cdk
+
+    environment: |-
+      ${{ 
+        github.event.inputs.system_name || 
+        (github.ref_name == 'ccs-one-dev' && 'ccs-one-dev') || 
+        'ccs-one-dev'
+      }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python deps (CDK app)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # CDK CLI is Node-based, so install Node + cdk (or use npx)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Run CDK action
+        run: npx aws-cdk@2 ${{ env.ACTION_NAME }} --context system_name=${{ env.SYSTEM_NAME }} --require-approval never
