@@ -163,21 +163,33 @@ export class CdkStack extends cdk.Stack {
     // Grant S3 permissions to the Glue job
     systemBucket.grantReadWrite(glueJobRole);
 
-    // Define the Glue Python Shell Job
-    // new glue.CfnJob(this, "glue-job-report", {
-    //   name: `${config.app.name}-report`,
-    //   role: glueJobRole.roleArn,
-    //   command: {
-    //     name: "glueshell", // Use 'glueshell' for Python Shell, 'glueetl' for ETL
-    //     scriptLocation: systemBucket.s3UrlForObject("scripts/report.py"),
-    //     pythonVersion: "3.9",
-    //   },
-    //   maxRetries: 1,
-    //   timeout: 60, // Timeout in minutes
-    //   // glueVersion: "2.0", // Use appropriate Glue version
-    //   workerType: "Standard", // Or G.1X, G.2X, etc.
-    //   numberOfWorkers: 2,
-    // });
+    // Define the Glue Python Shell Jobs
+    const appCodeGlueBasePath =
+      process.env.NUXT_APP_SURVEY_CODE_GLUE_BASE_PATH || "";
+
+    const glue_job_keys = "import_respondent_list,report_status_summary";
+    for (const glue_job_key of glue_job_keys.split(",")) {
+      new glue.CfnJob(this, `glue-job-${glue_job_key}`, {
+        name: `${config.app.name}-${glue_job_key}`,
+        role: glueJobRole.roleArn,
+        command: {
+          name: "glueshell", // Use 'glueshell' for Python Shell, 'glueetl' for ETL
+          scriptLocation: appCodeBucket.s3UrlForObject(
+            `${appCodeGlueBasePath}app/${glue_job_key}.py`,
+          ),
+          pythonVersion: "3.9",
+        },
+        // defaultArguments: {
+        //   "--APP_ENV": "stg",
+        //   "--LOG_LEVEL": "DEBUG",
+        // },
+        maxRetries: 1,
+        timeout: 60, // Timeout in minutes
+        // glueVersion: "2.0", // Use appropriate Glue version
+        workerType: "Standard", // Or G.1X, G.2X, etc.
+        numberOfWorkers: 2,
+      });
+    }
 
     // CloudFront ------------------------------------------------------------
 
@@ -339,37 +351,35 @@ export class CdkStack extends cdk.Stack {
         cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
     });
 
-    // // Entries Table : GSIs --------------------
-    // // [!] Only single GSI create/remove operation is allowed at a time
-    // //     Repeat deployment after uncomment/comment GSI definitions
-    // for (const [name, primaryKey] of [
-    //   ["date", "call_date"], // Date index - call_date
-    //   ["turn", "conv_type"], // Turn type index - conv_type
-    //   ["role", "ope_role"], // Role index - ope_role
-    //   ["industry", "speech_industry"], // Industry index - speech_industrry
-    //   ["caller", "caller_id"], // Caller ID index - caller_id
-    // ]) {
-    //   entriesTable.addGlobalSecondaryIndex({
-    //     indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
-    //     partitionKey: {
-    //       name: primaryKey,
-    //       type: dynamodb.AttributeType.STRING,
-    //     },
-    //     sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
-    //     projectionType: dynamodb.ProjectionType.INCLUDE,
-    //     nonKeyAttributes: [
-    //       "sortKey",
-    //       "call_date",
-    //       "conv_type",
-    //       "ope_virtual_env_info", // Non-key attributes
-    //       "ope_role",
-    //       "speech_industry",
-    //       "caller_id",
-    //       "createdAt", // Non-key attributes
-    //       "deletedAt", // Non-key attributes
-    //     ].filter((item) => item !== primaryKey),
-    //   });
-    // }
+    // Entries Table : GSIs --------------------
+    // [!] Only single GSI create/remove operation is allowed at a time
+    //     Repeat deployment after uncomment/comment GSI definitions
+    for (const [name, primaryKey] of [
+      ["round", "round_id"], // Round index - round_id
+      ["respondent", "respondent_id"], // Respondent index - respondent_id
+    ]) {
+      entriesTable.addGlobalSecondaryIndex({
+        indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
+        partitionKey: {
+          name: primaryKey,
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
+        projectionType: dynamodb.ProjectionType.INCLUDE,
+        nonKeyAttributes: [
+          "step_id",
+          "respondent_id",
+          "web_member_number",
+          "email",
+          "kana_name",
+          "kanji_name",
+          "call_pattern",
+          "classification",
+          "call_target",
+          "created_at", // Non-key attributes
+        ].filter((item) => item !== primaryKey),
+      });
+    }
 
     // // Entries Table : GSI for sync ------------
     // entriesTable.addGlobalSecondaryIndex({
