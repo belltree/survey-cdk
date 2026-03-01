@@ -369,6 +369,7 @@ export class CdkStack extends cdk.Stack {
         nonKeyAttributes: [
           "step_id",
           "respondent_id",
+          "customer_number",
           "web_member_number",
           "email",
           "kana_name",
@@ -380,18 +381,6 @@ export class CdkStack extends cdk.Stack {
         ].filter((item) => item !== primaryKey),
       });
     }
-
-    // // Entries Table : GSI for sync ------------
-    // entriesTable.addGlobalSecondaryIndex({
-    //   indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-sync-index`,
-    //   partitionKey: {
-    //     name: "id",
-    //     type: dynamodb.AttributeType.STRING,
-    //   },
-    //   sortKey: { name: "sortKey", type: dynamodb.AttributeType.STRING },
-    //   projectionType: dynamodb.ProjectionType.INCLUDE,
-    //   nonKeyAttributes: ["createdAt", "deletedAt"],
-    // });
 
     // Transaction Table ---------------------------
 
