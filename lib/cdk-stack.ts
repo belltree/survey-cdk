@@ -89,6 +89,26 @@ export class CdkStack extends cdk.Stack {
           expiration: cdk.Duration.days(1),
         },
       ],
+      cors: [
+        {
+          allowedOrigins: [
+            process.env.NUXT_APP_SURVEY_URL!,
+            process.env.NUXT_AWS_S3_STORAGE_CACHE_LOCALHOST_ACCESS === "yes"
+              ? "http://localhost:3000"
+              : "",
+          ],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedHeaders: ["*"],
+          exposedHeaders: ["ETag"],
+          maxAge: 3000,
+        },
+      ],
     });
 
     // Lambda ----------------------------------------------------------------
@@ -300,7 +320,7 @@ export class CdkStack extends cdk.Stack {
       comment: config.app.name,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // Minimum area including Japan
     });
-    Tags.of(distribution).add('Name', `${config.app.name}-cloudfront`);
+    Tags.of(distribution).add("Name", `${config.app.name}-cloudfront`);
 
     // DynamoDB --------------------------------------------------------------
 
