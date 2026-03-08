@@ -357,6 +357,7 @@ export class CdkStack extends cdk.Stack {
     for (const [name, primaryKey] of [
       ["round", "round_id"], // Round index - round_id
       ["respondent", "respondent_id"], // Respondent index - respondent_id
+      ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
     ]) {
       entriesTable.addGlobalSecondaryIndex({
         indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
@@ -365,20 +366,23 @@ export class CdkStack extends cdk.Stack {
           type: dynamodb.AttributeType.STRING,
         },
         sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
-        projectionType: dynamodb.ProjectionType.INCLUDE,
-        nonKeyAttributes: [
-          "step_id",
-          "respondent_id",
-          "customer_number",
-          "web_member_number",
-          "email",
-          "kana_name",
-          "kanji_name",
-          "call_pattern",
-          "classification",
-          "call_target",
-          "created_at", // Non-key attributes
-        ].filter((item) => item !== primaryKey),
+        projectionType: dynamodb.ProjectionType.ALL,
+        // projectionType: dynamodb.ProjectionType.INCLUDE,
+        // nonKeyAttributes: [
+        //   "step_id",
+        //   "respondent_id",
+        //   "status",
+        //   "magic_link_id",
+        //   "customer_number",
+        //   "web_member_number",
+        //   "email",
+        //   "kana_name",
+        //   "kanji_name",
+        //   "call_pattern",
+        //   "classification",
+        //   "call_target",
+        //   "created_at", // Non-key attributes
+        // ].filter((item) => item !== primaryKey),
       });
     }
 
