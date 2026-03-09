@@ -338,54 +338,54 @@ export class CdkStack extends cdk.Stack {
 
     // Entries Table ---------------------------
 
-    // const entriesTable = new dynamodb.Table(this, `dynamodb-table:Entries`, {
-    //   partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
-    //   sortKey: { name: "step_id", type: dynamodb.AttributeType.STRING },
-    //   tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`,
-    //   pointInTimeRecoverySpecification: {
-    //     pointInTimeRecoveryEnabled:
-    //       process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
-    //   },
-    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    //   removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
-    //     cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
-    // });
+    const entriesTable = new dynamodb.Table(this, `dynamodb-table:Entries`, {
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "step_id", type: dynamodb.AttributeType.STRING },
+      tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled:
+          process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
+        cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
+    });
 
-    // // Entries Table : GSIs --------------------
-    // // [!] Only single GSI create/remove operation is allowed at a time
-    // //     Repeat deployment after uncomment/comment GSI definitions
-    // for (const [name, primaryKey] of [
-    //   ["round", "round_id"], // Round index - round_id
-    //   // ["respondent", "respondent_id"], // Respondent index - respondent_id
-    //   // ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
-    //   // ["lookup_key", "lookup_key"], // Look up key index - lookup_key
-    // ]) {
-    //   entriesTable.addGlobalSecondaryIndex({
-    //     indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
-    //     partitionKey: {
-    //       name: primaryKey,
-    //       type: dynamodb.AttributeType.STRING,
-    //     },
-    //     sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
-    //     projectionType: dynamodb.ProjectionType.ALL,
-    //     // projectionType: dynamodb.ProjectionType.INCLUDE,
-    //     // nonKeyAttributes: [
-    //     //   "step_id",
-    //     //   "respondent_id",
-    //     //   "status",
-    //     //   "magic_link_id",
-    //     //   "customer_number",
-    //     //   "web_member_number",
-    //     //   "email",
-    //     //   "kana_name",
-    //     //   "kanji_name",
-    //     //   "call_pattern",
-    //     //   "classification",
-    //     //   "call_target",
-    //     //   "created_at", // Non-key attributes
-    //     // ].filter((item) => item !== primaryKey),
-    //   });
-    // }
+    // Entries Table : GSIs --------------------
+    // [!] Only single GSI create/remove operation is allowed at a time
+    //     Repeat deployment after uncomment/comment GSI definitions
+    for (const [name, primaryKey] of [
+      ["round", "round_id"], // Round index - round_id
+      // ["respondent", "respondent_id"], // Respondent index - respondent_id
+      // ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
+      // ["lookup_key", "lookup_key"], // Look up key index - lookup_key
+    ]) {
+      entriesTable.addGlobalSecondaryIndex({
+        indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
+        partitionKey: {
+          name: primaryKey,
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
+        projectionType: dynamodb.ProjectionType.ALL,
+        // projectionType: dynamodb.ProjectionType.INCLUDE,
+        // nonKeyAttributes: [
+        //   "step_id",
+        //   "respondent_id",
+        //   "status",
+        //   "magic_link_id",
+        //   "customer_number",
+        //   "web_member_number",
+        //   "email",
+        //   "kana_name",
+        //   "kanji_name",
+        //   "call_pattern",
+        //   "classification",
+        //   "call_target",
+        //   "created_at", // Non-key attributes
+        // ].filter((item) => item !== primaryKey),
+      });
+    }
 
     // Transaction Table ---------------------------
 
