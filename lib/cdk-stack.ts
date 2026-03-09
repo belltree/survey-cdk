@@ -259,6 +259,7 @@ export class CdkStack extends cdk.Stack {
     const staticBucketOrigin =
       cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(staticBucket, {
         originId: `${config.app.name}-static-assets-origin`,
+        originPath: process.env.NUXT_AWS_S3_PUBLIC_BASE_PATH ? ("/" + process.env.NUXT_AWS_S3_PUBLIC_BASE_PATH.replace(/^\/|\/$/g, "")) : "",
       });
 
     const cacheBucketOrigin =
