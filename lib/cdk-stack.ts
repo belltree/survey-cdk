@@ -167,7 +167,7 @@ export class CdkStack extends cdk.Stack {
     const appCodeGlueBasePath =
       process.env.NUXT_APP_SURVEY_CODE_GLUE_BASE_PATH || "";
 
-    const glue_job_keys = "import_respondent_list,report_status_summary";
+    const glue_job_keys = "import_respondent_list,send_notifications,create_survey_report";
     for (const glue_job_key of glue_job_keys.split(",")) {
       new glue.CfnJob(this, `glue-job-${glue_job_key}`, {
         name: `${config.app.name}-${glue_job_key}`,
@@ -179,10 +179,21 @@ export class CdkStack extends cdk.Stack {
           ),
           pythonVersion: "3.9",
         },
-        // defaultArguments: {
-        //   "--APP_ENV": "stg",
-        //   "--LOG_LEVEL": "DEBUG",
-        // },
+        defaultArguments: {
+          '--library-set': 'analytics',
+          '--additional-python-modules': 'python-dotenv==1.0.1',
+          '--job_name': '',
+          '--env': config.app.env,
+          '--round_id': '',
+          '--file_key': '',
+          '--NUXT_AWS_ACCESS_KEY_ID': process.env.NUXT_AWS_ACCESS_KEY_ID,
+          '--NUXT_AWS_SECRET_ACCESS_KEY': process.env.NUXT_AWS_SECRET_ACCESS_KEY,
+          '--NUXT_AWS_REGION': process.env.NUXT_AWS_REGION,
+          '--NUXT_AWS_S3_STORAGE_BUCKET_NAME': process.env.NUXT_AWS_S3_STORAGE_BUCKET_NAME,
+          '--NUXT_AWS_DYNAMO_TABLE_PREFIX': process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX,
+          '--NUXT_APP_SURVEY_URL': process.env.NUXT_APP_SURVEY_URL,
+          '--TZ': process.env.TZ,
+      },
         maxRetries: 1,
         timeout: 60, // Timeout in minutes
         // glueVersion: "2.0", // Use appropriate Glue version
@@ -338,53 +349,69 @@ export class CdkStack extends cdk.Stack {
 
     // Entries Table ---------------------------
 
-    const entriesTable = new dynamodb.Table(this, `dynamodb-table:Entries`, {
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "step_id", type: dynamodb.AttributeType.STRING },
-      tableName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`,
-      pointInTimeRecoverySpecification: {
-        pointInTimeRecoveryEnabled:
-          process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
-      },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
-        cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
-    });
+    const entriesTableName = `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries`;
+    const entriesTableAction = (
+      process.env.NUXT_AWS_DYNAMO_ENTRIES_TABLE_ACTION || "create"
+    ).toLowerCase();
+
+    let entriesTable: dynamodb.Table | undefined;
+    if (entriesTableAction === "import") {
+      dynamodb.Table.fromTableName(
+        this,
+        `dynamodb-table:EntriesExisting`,
+        entriesTableName,
+      );
+    } else {
+      entriesTable = new dynamodb.Table(this, `dynamodb-table:Entries`, {
+        partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+        sortKey: { name: "step_id", type: dynamodb.AttributeType.STRING },
+        tableName: entriesTableName,
+        pointInTimeRecoverySpecification: {
+          pointInTimeRecoveryEnabled:
+            process.env.NUXT_AWS_DYNAMO_POINT_IN_TIME_RECOVERY == "yes",
+        },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: (process.env.NUXT_AWS_DYNAMO_REMOVAL_POLICY ||
+          cdk.RemovalPolicy.RETAIN) as cdk.RemovalPolicy,
+      });
+    }
 
     // Entries Table : GSIs --------------------
     // [!] Only single GSI create/remove operation is allowed at a time
     //     Repeat deployment after uncomment/comment GSI definitions
-    for (const [name, primaryKey] of [
-      ["round", "round_id"], // Round index - round_id
-      ["respondent", "respondent_id"], // Respondent index - respondent_id
-      ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
-      ["lookup_key", "lookup_key"], // Look up key index - lookup_key
-    ]) {
-      entriesTable.addGlobalSecondaryIndex({
-        indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
-        partitionKey: {
-          name: primaryKey,
-          type: dynamodb.AttributeType.STRING,
-        },
-        sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
-        projectionType: dynamodb.ProjectionType.ALL,
-        // projectionType: dynamodb.ProjectionType.INCLUDE,
-        // nonKeyAttributes: [
-        //   "step_id",
-        //   "respondent_id",
-        //   "status",
-        //   "magic_link_id",
-        //   "customer_number",
-        //   "web_member_number",
-        //   "email",
-        //   "kana_name",
-        //   "kanji_name",
-        //   "call_pattern",
-        //   "classification",
-        //   "call_target",
-        //   "created_at", // Non-key attributes
-        // ].filter((item) => item !== primaryKey),
-      });
+    if (entriesTable) {
+      for (const [name, primaryKey] of [
+        ["round", "round_id"], // Round index - round_id
+        ["respondent", "respondent_id"], // Respondent index - respondent_id
+        ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
+        ["lookup_key", "lookup_key"], // Look up key index - lookup_key
+      ]) {
+        entriesTable.addGlobalSecondaryIndex({
+          indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
+          partitionKey: {
+            name: primaryKey,
+            type: dynamodb.AttributeType.STRING,
+          },
+          sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
+          projectionType: dynamodb.ProjectionType.ALL,
+          // projectionType: dynamodb.ProjectionType.INCLUDE,
+          // nonKeyAttributes: [
+          //   "step_id",
+          //   "respondent_id",
+          //   "status",
+          //   "magic_link_id",
+          //   "customer_number",
+          //   "web_member_number",
+          //   "email",
+          //   "kana_name",
+          //   "kanji_name",
+          //   "call_pattern",
+          //   "classification",
+          //   "call_target",
+          //   "created_at", // Non-key attributes
+          // ].filter((item) => item !== primaryKey),
+        });
+      }
     }
 
     // Transaction Table ---------------------------
