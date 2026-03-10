@@ -173,7 +173,7 @@ export class CdkStack extends cdk.Stack {
         name: `${config.app.name}-${glue_job_key}`,
         role: glueJobRole.roleArn,
         command: {
-          name: "glueshell", // Use 'glueshell' for Python Shell, 'glueetl' for ETL
+          name: "pythonshell", // Use 'pythonshell' for Python Shell, 'glueetl' for ETL
           scriptLocation: appCodeBucket.s3UrlForObject(
             `${appCodeGlueBasePath}app/${glue_job_key}.py`,
           ),
@@ -194,11 +194,9 @@ export class CdkStack extends cdk.Stack {
           '--NUXT_APP_SURVEY_URL': process.env.NUXT_APP_SURVEY_URL,
           '--TZ': process.env.TZ,
       },
-        maxRetries: 1,
+        maxRetries: 0, // Number of retry attempts (0 for no retries)
         timeout: 60, // Timeout in minutes
-        // glueVersion: "2.0", // Use appropriate Glue version
-        workerType: "Standard", // Or G.1X, G.2X, etc.
-        numberOfWorkers: 2,
+        maxCapacity: 0.0625, // DPU
       });
     }
 
