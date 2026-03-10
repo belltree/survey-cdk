@@ -162,6 +162,9 @@ export class CdkStack extends cdk.Stack {
 
     // Grant S3 permissions to the Glue job
     systemBucket.grantReadWrite(glueJobRole);
+    appCodeBucket.grantRead(glueJobRole);
+    storageBucket.grantReadWrite(glueJobRole);
+    cacheBucket.grantReadWrite(glueJobRole);  
 
     // Define the Glue Python Shell Jobs
     const appCodeGlueBasePath =
