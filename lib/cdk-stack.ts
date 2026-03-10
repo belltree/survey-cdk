@@ -176,7 +176,7 @@ export class CdkStack extends cdk.Stack {
         name: `${config.app.name}-${glue_job_key}`,
         role: glueJobRole.roleArn,
         command: {
-          name: "pythonshell", // Use 'pythonshell' for Python Shell, 'glueetl' for ETL
+          name: "pythonshell", // [DONT'T CHANGE!] Use "pythonshell" for Python Shell, 'glueetl' for ETL
           scriptLocation: appCodeBucket.s3UrlForObject(
             `${appCodeGlueBasePath}app/${glue_job_key}.py`,
           ),
