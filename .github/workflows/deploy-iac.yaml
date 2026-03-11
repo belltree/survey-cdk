@@ -19,13 +19,12 @@ on:
       system_name:
         description: "Target system (environment)"
         required: true
-        default: "ccs-one-dev"
+        default: "survey-sundai-dev"
         type: choice
         options:
-          - ccs-one-dev
-          - ccs-tcn-dev
-          - ccs-tcn-stg
-          - ccs-tcn-prd
+          - survey-sundai-dev
+          - survey-sundai-stg
+          - survey-sundai-prd
       action_name:
         description: "AWS CDK action"
         required: true
@@ -43,8 +42,8 @@ env:
   SYSTEM_NAME: |-
     ${{ 
       github.event.inputs.system_name || 
-      (github.ref_name == 'ccs-one-dev' && 'ccs-one-dev') || 
-      'ccs-one-dev'
+      (github.ref_name == 'survey-sundai-dev' && 'survey-sundai-dev') || 
+      'survey-sundai-dev'
     }}
   ACTION_NAME: |-
     ${{ 
@@ -52,43 +51,71 @@ env:
     }}
 
 jobs:
+  # Deploy phase --------------------------------------
+
   deploy-iac:
     runs-on: ubuntu-latest
 
     defaults:
       run:
-        working-directory: iac/cdk
+        working-directory: .
 
     environment: |-
       ${{ 
         github.event.inputs.system_name || 
-        (github.ref_name == 'ccs-one-dev' && 'ccs-one-dev') || 
-        'ccs-one-dev'
+        (github.ref_name == 'survey-sundai-dev' && 'survey-sundai-dev') || 
+        'survey-sundai-dev'
       }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-          cache: "pip"
+          node-version: "24"
 
-      - name: Install Python deps (CDK app)
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # CDK CLI is Node-based, so install Node + cdk (or use npx)
-      - uses: actions/setup-node@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          node-version: "22"
+          version: 10
 
-      - uses: aws-actions/configure-aws-credentials@v3
+      - name: Install dependencies
+        run: pnpm install # --frozen-lockfile
+
+      - name: Install AWS CDK CLI
+        run: pnpm add -g aws-cdk
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
 
-      - name: Run CDK action
-        run: npx aws-cdk@2 ${{ env.ACTION_NAME }} --context system_name=${{ env.SYSTEM_NAME }} --require-approval never
+      - name: Setup environment variables for following steps
+        run: |
+          SYSTEM_NAME=${{ env.SYSTEM_NAME }}; aws ssm get-parameter \
+            --name "/projects/standardai/survey/sundai/${SYSTEM_NAME: -3}/.env.${SYSTEM_NAME: -3}" \
+            --query "Parameter.Value" --output text | tee .env.${SYSTEM_NAME: -3}
+          grep -v '^#' .env.${SYSTEM_NAME: -3} | grep -v '^$' >> $GITHUB_ENV
+
+      - name: Load .env from SSM and update Lambda environment variables
+        shell: bash
+        env:
+          SYSTEM_NAME: ${{ env.SYSTEM_NAME }}
+        run: |
+          set -euo pipefail
+
+          ENV_SUFFIX="${SYSTEM_NAME: -3}"
+          PARAM_NAME="/projects/standardai/survey/sundai/${ENV_SUFFIX}/.env.${ENV_SUFFIX}"
+          ENV_FILE=".env.${ENV_SUFFIX}"
+
+          aws ssm get-parameter \
+            --name "${PARAM_NAME}" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > "${ENV_FILE}"
+
+          npx aws-cdk@2 ${{ env.ACTION_NAME }} --context system=${{ env.SYSTEM_NAME }} --require-approval never
