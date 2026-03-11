@@ -387,7 +387,7 @@ export class CdkStack extends cdk.Stack {
         ["round_step", "round_id", "step_id"], // Respondent-Step index - respondent_id-step_id
         ["respondent", "respondent_id", "id"], // Respondent index - respondent_id
         ["magic_link", "magic_link_id", "id"], // Magic link index - magic_link_id
-        ["lookup", "lookup_id", "id"], // Look up ID index - lookup_id
+        ["lookup", "lookup_id", "id"], // Look up index - lookup_id
       ]) {
         entriesTable.addGlobalSecondaryIndex({
           indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
