@@ -385,6 +385,7 @@ export class CdkStack extends cdk.Stack {
       for (const [name, partitionKey, sortKey] of [
         ["round", "round_id", "id"], // Round index - round_id
         ["round_step", "round_id", "step_id"], // Respondent-Step index - respondent_id-step_id
+        ["step", "step_id", "id"], // Step index - step_id
         ["respondent", "respondent_id", "id"], // Respondent index - respondent_id
         ["magic_link", "magic_link_id", "id"], // Magic link index - magic_link_id
         ["lookup", "lookup_id", "id"], // Look up index - lookup_id
