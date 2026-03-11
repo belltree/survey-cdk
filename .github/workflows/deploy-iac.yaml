@@ -25,6 +25,15 @@ on:
           - survey-sundai-dev
           - survey-sundai-stg
           - survey-sundai-prd
+      stack_type:
+        description: "Target stack type"
+        required: true
+        default: "regional"
+        type: choice
+        options:
+          - all
+          - global
+          - regional
       action_name:
         description: "AWS CDK action"
         required: true
@@ -44,6 +53,14 @@ env:
       github.event.inputs.system_name || 
       (github.ref_name == 'survey-sundai-dev' && 'survey-sundai-dev') || 
       'survey-sundai-dev'
+    }}
+  STACK_TYPE: |-
+    ${{ 
+      github.event.inputs.stack_type || 
+      (github.ref_name == 'global' && 'global') || 
+      (github.ref_name == 'regional' && 'regional') || 
+      (github.ref_name == 'all' && 'all') || 
+      'regional'
     }}
   ACTION_NAME: |-
     ${{ 
@@ -105,6 +122,8 @@ jobs:
         shell: bash
         env:
           SYSTEM_NAME: ${{ env.SYSTEM_NAME }}
+          STACK_TYPE: ${{ env.STACK_TYPE }}
+          ACTION_NAME: ${{ env.ACTION_NAME }}
         run: |
           set -euo pipefail
 
@@ -118,4 +137,10 @@ jobs:
             --query "Parameter.Value" \
             --output text > "${ENV_FILE}"
 
-          npx aws-cdk@2 ${{ env.ACTION_NAME }} --context system=${{ env.SYSTEM_NAME }} --require-approval never
+          STACK_NAME=$SYSTEM_NAME
+          IF $STACK_TYPE == "global":
+            STACK_NAME="${STACK_NAME}-global"
+          ELIF $STACK_TYPE == "all":
+            STACK_NAME="--all"
+
+          npx aws-cdk@2 $ACTION_NAME --context system=$SYSTEM_NAME --require-approval never $STACK_NAME
