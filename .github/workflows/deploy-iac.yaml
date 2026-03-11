@@ -138,9 +138,10 @@ jobs:
             --output text > "${ENV_FILE}"
 
           STACK_NAME=$SYSTEM_NAME
-          IF $STACK_TYPE == "global":
+          if [ $STACK_TYPE = "global" ]; then
             STACK_NAME="${STACK_NAME}-global"
-          ELIF $STACK_TYPE == "all":
+          elif [ $STACK_TYPE = "all" ]; then
             STACK_NAME="--all"
+          fi
 
           npx aws-cdk@2 $ACTION_NAME --context system=$SYSTEM_NAME --require-approval never $STACK_NAME
