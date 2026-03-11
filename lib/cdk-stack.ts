@@ -382,36 +382,41 @@ export class CdkStack extends cdk.Stack {
     // [!] Only single GSI create/remove operation is allowed at a time
     //     Repeat deployment after uncomment/comment GSI definitions
     if (entriesTable) {
-      for (const [name, primaryKey] of [
-        ["round", "round_id"], // Round index - round_id
-        ["respondent", "respondent_id"], // Respondent index - respondent_id
-        ["magic_link", "magic_link_id"], // Magic link index - magic_link_id
-        ["lookup_key", "lookup_key"], // Look up key index - lookup_key
+      for (const [name, partitionKey, sortKey] of [
+        ["round", "round_id", "id"], // Round index - round_id
+        ["round_step", "round_id", "step_id"], // Respondent-Step index - respondent_id-step_id
+        ["respondent", "respondent_id", "id"], // Respondent index - respondent_id
+        ["magic_link", "magic_link_id", "id"], // Magic link index - magic_link_id
+        ["lookup", "lookup_id", "id"], // Look up ID index - lookup_id
       ]) {
         entriesTable.addGlobalSecondaryIndex({
           indexName: `${process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX}Entries-${name}-index`,
           partitionKey: {
-            name: primaryKey,
+            name: partitionKey,
             type: dynamodb.AttributeType.STRING,
           },
-          sortKey: { name: "id", type: dynamodb.AttributeType.STRING },
-          projectionType: dynamodb.ProjectionType.ALL,
-          // projectionType: dynamodb.ProjectionType.INCLUDE,
-          // nonKeyAttributes: [
-          //   "step_id",
-          //   "respondent_id",
-          //   "status",
-          //   "magic_link_id",
-          //   "customer_number",
-          //   "web_member_number",
-          //   "email",
-          //   "kana_name",
-          //   "kanji_name",
-          //   "call_pattern",
-          //   "classification",
-          //   "call_target",
-          //   "created_at", // Non-key attributes
-          // ].filter((item) => item !== primaryKey),
+          sortKey: { name: sortKey, type: dynamodb.AttributeType.STRING },
+          // projectionType: dynamodb.ProjectionType.ALL,
+          projectionType: dynamodb.ProjectionType.INCLUDE,
+          nonKeyAttributes: [
+            "id",
+            "step_id",
+            "created_at", // Non-key attributes
+            "email",
+            "entry_complete",
+            "kana_name",
+            "kanji_name",
+            "lookup_id",
+            "magic_link_id",
+            "mobile_number",
+            "phone_number",
+            "respondent_id",
+            "round_id",
+            "status",
+            "university_count",
+            "updated_at", // Non-key attributes
+            "web_member_number",
+          ].filter((item) => item !== partitionKey && item !== sortKey),
         });
       }
     }
