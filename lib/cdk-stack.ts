@@ -186,7 +186,7 @@ export class CdkStack extends cdk.Stack {
           '--library-set': 'analytics',
           '--additional-python-modules': 'python-dotenv==1.0.1',
           '--job_name': '',
-          '--env': config.app.env,
+          '--env': config.app.environment,
           '--round_id': '',
           '--file_key': '',
           '--NUXT_AWS_ACCESS_KEY_ID': process.env.NUXT_AWS_ACCESS_KEY_ID,

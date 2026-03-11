@@ -62,7 +62,6 @@ for (const key in props.tags) {
 const config: any = {
   app: {
     name: system,
-    project: `${project}-${client}`,
     environment,
   },
 };
