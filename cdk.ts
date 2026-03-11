@@ -2,12 +2,12 @@
 
 // Usage:
 //   Bootstrapping:
-//     cdk --profile sai --context env=stg bootstrap aws://440744255687/us-east-1
-//     cdk --profile sai --context env=stg bootstrap aws://440744255687/ap-northeast-1
+//     cdk --profile sai --context system=project-client-stg bootstrap aws://440744255687/us-east-1
+//     cdk --profile sai --context system=project-client-stg bootstrap aws://440744255687/ap-northeast-1
 //   Check difference:
-//     cdk --profile sai --context env=stg diff --all
+//     cdk --profile sai --context system=project-client-stg diff --all
 //   Deploy:
-//     cdk --profile sai --context env=stg deploy --all
+//     cdk --profile sai --context system=project-client-stg deploy --all
 
 // ---------------------------------------------------------------------------
 
@@ -18,35 +18,40 @@ import { CdkStack } from "./lib/cdk-stack";
 import { CdkStackGlobal } from "./lib/cdk-stack-global";
 
 // Determine and load environment-specific .env file
-// ex. cdk --profile sai deploy --context env=dev
+// ex. cdk --profile sai deploy --context system=project-client-dev
 
 const app = new cdk.App();
-const env = app.node.tryGetContext("env");
-const dotenvPath = path.resolve(__dirname, `.env.${env}`);
+const system = app.node.tryGetContext("system");
+const [project, client, environment] = system.split("-");
+const dotenvPath = path.resolve(__dirname, `.env.${environment}`);
 console.log({ dotenvPath });
 dotenv.config({ path: dotenvPath, override: true });
 
 const team_name = process.env.NUXT_SYS_TEAM_NAME || "standardai";
-const project_name = process.env.NUXT_SYS_PROJECT_NAME || "survey";
-const client_name = process.env.NUXT_SYS_CLIENT_NAME || "standardai";
-const service_name = process.env.NUXT_SYS_SERVICE_NAME || "survey-sundai";
+const project_name = process.env.NUXT_SYS_PROJECT_NAME;
+const client_name = process.env.NUXT_SYS_CLIENT_NAME;
+const service_name = process.env.NUXT_SYS_SERVICE_NAME;
 const product_name = process.env.NUXT_SYS_PRODUCT_NAME || "survey";
+
+if (system !== `${project_name}-${client_name}-${environment}`)  {
+  throw new Error(`System name from context (${system}) does not match the one in .env.${environment} (${project_name}-${client_name}-${environment})`);
+}
 
 const props: cdk.StackProps = {
   tags: {
     // Standard AI Tags
     team: team_name,
-    project: project_name,
-    client: client_name,
-    environment: env,
-    service: service_name,
+    project,
+    client,
+    environment,
+    system,
     product: product_name,
 
     // ServerWorks Tags (Cost Allocation Tags)
     Owner: team_name,
-    Category1: project_name,
-    Category2: client_name,
-    Category3: env,
+    Category1: project,
+    Category2: client,
+    Category3: environment,
     Application: product_name,
   },
 };
@@ -56,9 +61,9 @@ for (const key in props.tags) {
 
 const config: any = {
   app: {
-    name: `${process.env.NUXT_SYS_SERVICE_NAME}-${env}`,
-    project: process.env.NUXT_SYS_SERVICE_NAME,
-    env,
+    name: system,
+    project: `${project}-${client}`,
+    environment,
   },
 };
 
