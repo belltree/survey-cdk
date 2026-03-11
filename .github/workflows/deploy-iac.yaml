@@ -118,7 +118,7 @@ jobs:
             --query "Parameter.Value" --output text | tee .env.${SYSTEM_NAME: -3}
           grep -v '^#' .env.${SYSTEM_NAME: -3} | grep -v '^$' >> $GITHUB_ENV
 
-      - name: Load .env from SSM and update Lambda environment variables
+      - name: Load .env from SSM and run AWS CDK command
         shell: bash
         env:
           SYSTEM_NAME: ${{ env.SYSTEM_NAME }}
