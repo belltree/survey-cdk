@@ -193,7 +193,7 @@ export class CdkStack extends cdk.Stack {
           '--NUXT_AWS_SECRET_ACCESS_KEY': process.env.NUXT_AWS_SECRET_ACCESS_KEY,
           '--NUXT_AWS_REGION': process.env.NUXT_AWS_REGION,
           '--NUXT_AWS_S3_STORAGE_BUCKET_NAME': process.env.NUXT_AWS_S3_STORAGE_BUCKET_NAME,
-            '--NUXT_AWS_S3_STORAGE_BASE_PATH': process.env.NUXT_AWS_S3_STORAGE_BASE_PATH,
+          '--NUXT_AWS_S3_STORAGE_BASE_PATH': process.env.NUXT_AWS_S3_STORAGE_BASE_PATH,
           '--NUXT_AWS_DYNAMO_TABLE_PREFIX': process.env.NUXT_AWS_DYNAMO_TABLE_PREFIX,
           '--NUXT_APP_SURVEY_URL': process.env.NUXT_APP_SURVEY_URL,
           '--TZ': process.env.TZ,
